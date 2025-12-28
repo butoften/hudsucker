@@ -86,9 +86,12 @@ where
     H: HttpHandler,
     W: WebSocketHandler,
 {
-    fn context(&self) -> HttpContext {
+    fn context(&self, req: &Request<Body>) -> HttpContext {
         HttpContext {
             client_addr: self.client_addr,
+            stream_id: uuid::Uuid::new_v4().to_string(),
+            request_uri: req.uri().clone(),
+            request_method: req.method().clone(),
         }
     }
 
@@ -105,11 +108,12 @@ where
         mut self,
         req: Request<Incoming>,
     ) -> Result<Response<Body>, Infallible> {
-        let ctx = self.context();
+        let req = req.map(Body::from);
+        let ctx = self.context(&req);
 
         let req = match self
             .http_handler
-            .handle_request(&ctx, req.map(Body::from))
+            .handle_request(&ctx, req)
             .instrument(info_span!("handle_request"))
             .await
         {
@@ -167,7 +171,7 @@ where
 
                             if self
                                 .http_handler
-                                .should_intercept(&self.context(), &req)
+                                .should_intercept(&self.context(&req), &req)
                                 .await
                             {
                                 if buffer == *b"GET " {

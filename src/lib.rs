@@ -34,7 +34,7 @@ mod rewind;
 pub mod certificate_authority;
 
 use futures::{Sink, SinkExt, Stream, StreamExt};
-use hyper::{Request, Response, StatusCode, Uri};
+use hyper::{Method, Request, Response, StatusCode, Uri};
 use std::net::SocketAddr;
 use tokio_tungstenite::tungstenite::{self, Message};
 use tracing::error;
@@ -83,6 +83,17 @@ impl From<Response<Body>> for RequestOrResponse {
 pub struct HttpContext {
     /// Address of the client that is sending the request.
     pub client_addr: SocketAddr,
+    /// Stream identifier for this request/response pair.
+    /// For HTTP/2, this represents the actual stream ID.
+    /// For HTTP/1.x, this is a generated unique identifier.
+    /// This is used to match requests with their corresponding responses,
+    /// especially important for HTTP/2 connections where multiple requests
+    /// share the same TCP connection.
+    pub stream_id: String,
+    /// The URI of the request.
+    pub request_uri: Uri,
+    /// The HTTP method of the request.
+    pub request_method: Method,
 }
 
 /// Context for websocket messages.
